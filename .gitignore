@@ -1,0 +1,12 @@
+node_modules/
+dist/
+wasm/target/
+wasm/pkg/
+lists/*.txt
+lists/metadata.json
+data/engine.dat
+data/filter-rules.txt
+cosmetic/specific/
+cosmetic/generic.css
+rulesets/
+*.DS_Store

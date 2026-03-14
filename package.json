@@ -1,0 +1,28 @@
+{
+  "name": "brave-shields-extension",
+  "version": "1.0.0",
+  "description": "Ad and tracker blocking powered by Brave's adblock-rust engine",
+  "private": true,
+  "scripts": {
+    "build:wasm": "cd wasm && wasm-pack build --target web --out-dir ../dist/wasm && cd .. && npx ts-node --project build/tsconfig.json build/prepare-wasm-glue.ts",
+    "build:lists": "npx ts-node build/download-lists.ts",
+    "build:dnr": "npx ts-node build/convert-to-dnr.ts",
+    "build:cosmetic": "npx ts-node build/extract-cosmetic.ts",
+    "build:engine": "npx ts-node build/serialize-engine.ts",
+    "build:extension": "webpack --mode production",
+    "build": "npm run build:wasm && npm run build:lists && npm run build:dnr && npm run build:cosmetic && npm run build:engine && npm run build:extension",
+    "dev": "webpack --mode development --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.0",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.0",
+    "ts-loader": "^9.5.0",
+    "copy-webpack-plugin": "^12.0.0",
+    "html-webpack-plugin": "^5.6.0",
+    "@types/chrome": "^0.0.268"
+  },
+  "dependencies": {}
+
+}

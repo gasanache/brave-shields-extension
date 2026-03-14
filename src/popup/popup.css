@@ -1,0 +1,211 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #e0e0e0;
+  background: #1e1e2e;
+}
+
+.shields-panel {
+  padding: 16px;
+}
+
+/* Hide everything until JS has loaded the real state */
+.shields-panel.loading {
+  opacity: 0;
+}
+
+/* Disable slider transitions while loading to prevent animated switch */
+.shields-panel.loading .slider,
+.shields-panel.loading .slider::before {
+  transition: none !important;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.shield-icon {
+  color: #fb542b;
+  flex-shrink: 0;
+}
+
+.shields-disabled .shield-icon {
+  color: #555;
+}
+
+.header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-text h1 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #f0f0f0;
+}
+
+.hostname {
+  font-size: 12px;
+  color: #888;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Toggle switch */
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #444;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+
+.slider::before {
+  content: '';
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background: #ccc;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle input:checked + .slider {
+  background: #fb542b;
+}
+
+.toggle input:checked + .slider::before {
+  transform: translateX(20px);
+  background: #fff;
+}
+
+/* Status */
+.status {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fb542b;
+  margin-bottom: 16px;
+  padding: 8px;
+  background: rgba(251, 84, 43, 0.12);
+  border-radius: 6px;
+}
+
+.shields-disabled .status {
+  color: #666;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.shields-disabled .stats .stat-value {
+  color: #555;
+}
+
+.shields-disabled .controls {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Stats */
+.stats {
+  margin-bottom: 16px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  color: #aaa;
+  font-size: 13px;
+}
+
+.stat-value {
+  font-weight: 600;
+  color: #fb542b;
+  font-size: 14px;
+}
+
+/* Controls */
+.controls {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+}
+
+.controls-header {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.control-row span {
+  font-size: 13px;
+  color: #aaa;
+}
+
+.control-row select {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #2a2a3e;
+  color: #e0e0e0;
+  cursor: pointer;
+}
+
+.control-row select:hover {
+  border-color: #fb542b;
+}
+
+.control-row select:focus {
+  outline: none;
+  border-color: #fb542b;
+}
