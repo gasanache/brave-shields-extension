@@ -1,6 +1,6 @@
 {
   "name": "brave-shields-extension",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Ad and tracker blocking powered by Brave's adblock-rust engine",
   "private": true,
   "scripts": {

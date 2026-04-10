@@ -146,10 +146,16 @@ function buildRules(buckets: SiteBuckets): LocalRule[] {
     });
   }
 
-  // Default cross-site cookie blocking — applies globally to third-party
-  // requests, except on sites that opted out (cookieBlocking: 'all'/'none' or
-  // shields disabled). 'all' is also covered by a stricter rule below; the
-  // exemption here just avoids double-matching.
+  // Default cross-site cookie blocking — strips Set-Cookie from third-party
+  // RESPONSES so trackers can't store new cookies on you. We deliberately do
+  // NOT strip the Cookie request header: many legitimate auth flows make
+  // background requests to a different eTLD+1 (e.g., youtube.com → accounts.
+  // google.com for token refresh, *.amazonaws.com for signed assets, OAuth
+  // bounces), and stripping the request cookie on those breaks logged-in
+  // sessions. Existing first-party login state is unaffected; the privacy
+  // benefit is that third parties can't establish *new* tracking cookies.
+  // Sites that opted out (cookieBlocking 'all'/'none' or shields off) are
+  // exempted; 'all' is enforced by a stricter rule below.
   const crossSiteCondition: LocalRule['condition'] = {
     domainType: 'thirdParty',
     resourceTypes: ALL_RESOURCE_TYPES,
@@ -162,7 +168,6 @@ function buildRules(buckets: SiteBuckets): LocalRule[] {
     priority: RULE_PRIORITY,
     action: {
       type: 'modifyHeaders',
-      requestHeaders: [{ header: 'cookie', operation: 'remove' }],
       responseHeaders: [{ header: 'set-cookie', operation: 'remove' }],
     },
     condition: crossSiteCondition,
