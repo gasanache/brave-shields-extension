@@ -191,35 +191,77 @@
     return originalXHRSend.apply(this, args as any);
   };
 
-  // --- 5. Auto-skip ads and hide ad UI ---
+  // --- 5. Catch-all JSON.parse hook ---
+  // YouTube has been moving more player state to internal channels we can't
+  // see (worker-side processing, batched RPC, etc.), so the fetch/XHR hooks
+  // above don't catch everything. Hooking JSON.parse picks up any parse the
+  // page does, regardless of how the bytes got there. stripAds is cheap (six
+  // top-level field deletes), so running it on every parse is fine.
+  const originalParse = JSON.parse;
+  JSON.parse = function (text: string, reviver?: any) {
+    const result = originalParse.call(this, text, reviver);
+    try {
+      if (result && typeof result === 'object') {
+        if (stripAds(result)) notifyBlocked();
+        // Player response is sometimes nested inside /next or /browse responses
+        if (result.playerResponse && typeof result.playerResponse === 'object') {
+          if (stripAds(result.playerResponse)) notifyBlocked();
+        }
+      }
+    } catch {
+      // Never break a parse — return the result as-is
+    }
+    return result;
+  };
+
+  // --- 6. Auto-skip ads and hide ad UI ---
+  // Anything that slips past the network layer hits here. The .ad-showing
+  // class on .html5-video-player is YouTube's own marker — when it's set we
+  // mute, crank playbackRate, and jump to the end. State is restored when the
+  // class drops so the user's volume and speed survive each ad break.
+  let savedRate: number | null = null;
+  let savedMuted: boolean | null = null;
+
   function skipAdIfPresent(): void {
-    // Click skip button if available
+    const player = document.querySelector('.html5-video-player');
+    const video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
+    const isAdShowing =
+      player?.classList.contains('ad-showing') ||
+      player?.classList.contains('ad-interrupting');
+
+    if (isAdShowing && video) {
+      if (savedRate === null) {
+        savedRate = video.playbackRate;
+        savedMuted = video.muted;
+      }
+      video.muted = true;
+      if (video.playbackRate !== 16) video.playbackRate = 16;
+      if (video.duration && isFinite(video.duration)) {
+        video.currentTime = video.duration;
+      }
+    } else if (savedRate !== null && video) {
+      video.playbackRate = savedRate;
+      if (savedMuted !== null) video.muted = savedMuted;
+      savedRate = null;
+      savedMuted = null;
+    }
+
+    // Click any visible skip button regardless of state
     const skipBtn =
       document.querySelector<HTMLButtonElement>('.ytp-skip-ad-button') ||
-      document.querySelector<HTMLButtonElement>(
-        '.ytp-ad-skip-button-modern'
-      ) ||
+      document.querySelector<HTMLButtonElement>('.ytp-ad-skip-button-modern') ||
+      document.querySelector<HTMLButtonElement>('.ytp-ad-skip-button') ||
       document.querySelector<HTMLButtonElement>('[id^="skip-button"]');
     if (skipBtn) {
       skipBtn.click();
       notifyBlocked();
-    }
-
-    // If we detect an ad is playing, try to skip it
-    const video = document.querySelector<HTMLVideoElement>('video.html5-main-video');
-    const adOverlay = document.querySelector('.ytp-ad-player-overlay');
-    if (video && adOverlay) {
-      // Jump to end of ad
-      if (video.duration && isFinite(video.duration)) {
-        video.currentTime = video.duration;
-      }
     }
   }
 
   // Poll for ads that bypass the intercept
   setInterval(skipAdIfPresent, 500);
 
-  // --- 6. CSS to hide ad UI elements ---
+  // --- 7. CSS to hide ad UI elements ---
   const style = document.createElement('style');
   style.textContent = `
     .ytp-ad-overlay-container,

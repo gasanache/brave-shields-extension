@@ -8,8 +8,36 @@
   <div class="shields-panel loading">
     <div class="header">
       <div class="shield-icon" id="shieldIcon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="currentColor"/>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="bs-shield-fill" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#ff7547"/>
+              <stop offset="55%" stop-color="#fb542b"/>
+              <stop offset="100%" stop-color="#c93410"/>
+            </linearGradient>
+            <linearGradient id="bs-shield-shine" x1="0%" y1="0%" x2="100%" y2="70%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+              <stop offset="55%" stop-color="#ffffff" stop-opacity="0.05"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Base shield with vertical gradient -->
+          <path
+            d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
+            fill="url(#bs-shield-fill)"
+          />
+          <!-- Diagonal highlight overlay (top-left → fade) -->
+          <path
+            d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
+            fill="url(#bs-shield-shine)"
+          />
+          <!-- Subtle inner stroke for crisper edge -->
+          <path
+            d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
+            fill="none"
+            stroke="rgba(0,0,0,0.18)"
+            stroke-width="0.5"
+          />
         </svg>
       </div>
       <div class="header-text">
@@ -41,21 +69,31 @@
 
     <div class="controls">
       <div class="controls-header">Settings for this site</div>
-      <div class="control-row">
-        <span>Ad blocking</span>
-        <select id="adBlockMode">
-          <option value="standard">Standard</option>
-          <option value="aggressive">Aggressive</option>
-        </select>
+
+      <div class="control-group">
+        <div class="control-label">Ad blocking</div>
+        <div class="segmented" id="adBlockMode" role="radiogroup" aria-label="Ad blocking mode">
+          <button type="button" class="seg" role="radio" data-value="standard">Standard</button>
+          <button type="button" class="seg" role="radio" data-value="aggressive">Aggressive</button>
+          <span class="seg-indicator" aria-hidden="true"></span>
+        </div>
       </div>
-      <div class="control-row">
-        <span>Cookie blocking</span>
-        <select id="cookieBlocking">
-          <option value="cross-site">Cross-site</option>
-          <option value="all">All</option>
-          <option value="none">None</option>
-        </select>
+
+      <div class="control-group">
+        <div class="control-label">Cookie blocking</div>
+        <div class="segmented" id="cookieBlocking" role="radiogroup" aria-label="Cookie blocking mode">
+          <button type="button" class="seg" role="radio" data-value="cross-site">Cross-site</button>
+          <button type="button" class="seg" role="radio" data-value="all">All</button>
+          <button type="button" class="seg" role="radio" data-value="none">None</button>
+          <span class="seg-indicator" aria-hidden="true"></span>
+        </div>
       </div>
+    </div>
+
+    <div class="incognito-hint" id="incognitoHint" hidden>
+      <span class="incognito-hint-text">Enable in incognito mode</span>
+      <button type="button" class="incognito-hint-link" id="incognitoHintAction">Enable</button>
+      <button type="button" class="incognito-hint-x" id="incognitoHintDismiss" aria-label="Dismiss">×</button>
     </div>
   </div>
 </body>

@@ -52,19 +52,3 @@ export async function checkForUpdates(): Promise<void> {
   });
 }
 
-export async function getEnabledRulesetIds(): Promise<string[]> {
-  const enabledIds = await chrome.declarativeNetRequest.getEnabledRulesets();
-  return enabledIds;
-}
-
-export async function toggleRuleset(rulesetId: string, enabled: boolean): Promise<void> {
-  if (enabled) {
-    await chrome.declarativeNetRequest.updateEnabledRulesets({
-      enableRulesetIds: [rulesetId],
-    });
-  } else {
-    await chrome.declarativeNetRequest.updateEnabledRulesets({
-      disableRulesetIds: [rulesetId],
-    });
-  }
-}

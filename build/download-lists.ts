@@ -30,6 +30,11 @@ const FILTER_LISTS: FilterListConfig[] = [
     name: "Peter Lowe's List",
     url: 'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0',
   },
+  {
+    id: 'ublock-privacy',
+    name: 'uBlock Filters - Privacy',
+    url: 'https://ublockorigin.github.io/uAssets/filters/privacy.txt',
+  },
 ];
 
 const LISTS_DIR = path.resolve(__dirname, '..', 'lists');

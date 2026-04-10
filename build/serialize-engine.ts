@@ -19,7 +19,7 @@ async function main(): Promise<void> {
   }
 
   // Collect all filter rules
-  const lists = ['easylist', 'easyprivacy', 'ublock-filters', 'peter-lowe'];
+  const lists = ['easylist', 'easyprivacy', 'ublock-filters', 'peter-lowe', 'ublock-privacy'];
   const allRules: string[] = [];
 
   for (const listId of lists) {
@@ -58,6 +58,13 @@ async function main(): Promise<void> {
 
     fs.writeFileSync(ENGINE_DAT, buffer);
     console.log(`Engine serialized to ${ENGINE_DAT} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
+
+    // Engine.dat is the source of truth — drop the runtime fallback so it doesn't ship in dist/
+    const fallbackPath = path.join(DATA_DIR, 'filter-rules.txt');
+    if (fs.existsSync(fallbackPath)) {
+      fs.unlinkSync(fallbackPath);
+      console.log(`Removed stale ${fallbackPath} (no longer needed)`);
+    }
   } catch (err) {
     console.warn('adblock-rs Node bindings not available, creating placeholder engine.dat');
     console.warn('The WASM engine will build from filter rules at runtime instead.');

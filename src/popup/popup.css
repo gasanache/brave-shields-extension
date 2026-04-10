@@ -21,9 +21,14 @@ body {
   opacity: 0;
 }
 
-/* Disable slider transitions while loading to prevent animated switch */
+/* Suppress every animated transition while the panel is loading so the very
+   first paint lands every element in its real state — toggle, segmented pill,
+   active-segment color — without any visible interpolation. Bulletproof for
+   the popup-reopen case where state may differ from the HTML defaults. */
 .shields-panel.loading .slider,
-.shields-panel.loading .slider::before {
+.shields-panel.loading .slider::before,
+.shields-panel.loading .seg,
+.shields-panel.loading .seg-indicator {
   transition: none !important;
 }
 
@@ -35,12 +40,17 @@ body {
 }
 
 .shield-icon {
-  color: #fb542b;
   flex-shrink: 0;
+  /* Soft orange glow under the shield for depth — purely visual, no animation
+     so it has nothing to do with the loading-state race. */
+  filter: drop-shadow(0 2px 5px rgba(251, 84, 43, 0.32));
+  display: flex;
+  align-items: center;
 }
 
 .shields-disabled .shield-icon {
-  color: #555;
+  /* Desaturate + dim instead of swapping colors. Works against the gradient. */
+  filter: grayscale(0.85) brightness(0.55);
 }
 
 .header-text {
@@ -168,44 +178,169 @@ body {
 /* Controls */
 .controls {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 12px;
+  padding-top: 14px;
+  margin-top: 4px;
 }
 
 .controls-header {
   font-size: 11px;
   color: #666;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
 }
 
-.control-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
+.control-group {
+  margin-bottom: 12px;
 }
 
-.control-row span {
-  font-size: 13px;
-  color: #aaa;
+.control-group:last-child {
+  margin-bottom: 0;
 }
 
-.control-row select {
+.control-label {
   font-size: 12px;
-  padding: 4px 8px;
-  border: 1px solid #444;
-  border-radius: 4px;
+  color: #aaa;
+  margin-bottom: 6px;
+  letter-spacing: 0.1px;
+}
+
+/* Segmented control */
+.segmented {
+  position: relative;
+  display: flex;
   background: #2a2a3e;
-  color: #e0e0e0;
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.seg {
+  flex: 1;
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 7px 6px;
   cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.18s ease;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.control-row select:hover {
-  border-color: #fb542b;
+.seg:hover:not(.active) {
+  color: #ccc;
 }
 
-.control-row select:focus {
+.seg.active {
+  color: #fff;
+}
+
+.seg:focus {
   outline: none;
-  border-color: #fb542b;
+}
+
+.seg:focus-visible {
+  outline: 2px solid rgba(251, 84, 43, 0.55);
+  outline-offset: 1px;
+}
+
+/* On the active segment the orange pill is already showing — an outer orange
+   ring just doubles up. Inset a subtle white ring instead so keyboard focus
+   stays visible without clashing. */
+.seg.active:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.7);
+  outline-offset: -3px;
+}
+
+/* Incognito hint — shown only when chrome.extension.isAllowedIncognitoAccess()
+   is false and the user hasn't dismissed it. Sits below .controls so it doesn't
+   compete with the primary on/off toggle. Chrome blocks any extension-side way
+   to flip the per-install incognito toggle, so the best we can do is guide the
+   user to chrome://extensions/?id=<id> with a single click. */
+.incognito-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(251, 84, 43, 0.08);
+  border: 1px solid rgba(251, 84, 43, 0.18);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.incognito-hint[hidden] {
+  display: none;
+}
+
+.incognito-hint-text {
+  flex: 1;
+  color: #ccc;
+}
+
+.incognito-hint-link {
+  background: transparent;
+  border: none;
+  color: #fb542b;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.incognito-hint-link:hover {
+  background: rgba(251, 84, 43, 0.15);
+}
+
+.incognito-hint-link:focus-visible {
+  outline: 2px solid rgba(251, 84, 43, 0.55);
+  outline-offset: 1px;
+}
+
+.incognito-hint-x {
+  background: transparent;
+  border: none;
+  color: #777;
+  font-size: 16px;
+  font-family: inherit;
+  padding: 2px 6px;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.incognito-hint-x:hover {
+  color: #ddd;
+}
+
+.incognito-hint-x:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 1px;
+}
+
+/* Sliding indicator pill — JS sets width and translateX based on the
+   active segment's offsetLeft / offsetWidth. */
+.seg-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  z-index: 1;
+  background: #fb542b;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(251, 84, 43, 0.35);
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
 }

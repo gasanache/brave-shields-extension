@@ -11,7 +11,20 @@ import {
   incrementTabStat,
   setTabEnabled,
 } from './storage';
+import { syncDynamicRules, clearCookiesForHost } from './site-modes';
 import { UPDATE_ALARM_NAME, UPDATE_INTERVAL_MINUTES } from '../shared/constants';
+
+// chrome.action.set* APIs reject with "No tab with id: NNN" if the tab closes
+// between when we schedule the call and when it runs. The badge is best-effort
+// per-tab decoration — if the tab is gone, there's nothing to update and nothing
+// to do, so we swallow the rejection rather than letting it surface as an
+// unhandled promise rejection in the SW error log.
+function setBadgeSafe(tabId: number, text: string, color?: string): void {
+  chrome.action.setBadgeText({ text, tabId }).catch(() => {});
+  if (color !== undefined) {
+    chrome.action.setBadgeBackgroundColor({ color, tabId }).catch(() => {});
+  }
+}
 
 // Initialize engine on service worker activation
 self.addEventListener('activate', () => {
@@ -20,6 +33,10 @@ self.addEventListener('activate', () => {
 
 // Also initialize when the service worker starts (covers wake-ups)
 initEngine().catch((err) => console.error('[Shields] Engine init failed:', err));
+
+// Sync per-site dynamic DNR rules (aggressive ad blocking + cookie blocking).
+// Runs on every SW startup so the rules survive worker suspension/extension reload.
+syncDynamicRules();
 
 // Set up cosmetic filtering injection
 setupCosmeticInjector();
@@ -70,6 +87,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           setTabEnabled(tabId, enabled);
         }
 
+        // Re-sync dynamic rules so a shields-off site is exempted from the
+        // default cross-site cookie rule (and any aggressive rules it had on).
+        await syncDynamicRules();
+
         sendResponse({ success: true });
       })();
       return true; // async response
@@ -95,6 +116,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const settings = await getSiteSettings(hostname);
         (settings as any)[key] = value;
         await setSiteSettings(hostname, settings);
+
+        // adBlockMode + cookieBlocking are enforced by dynamic DNR rules — recompute on every change.
+        if (key === 'adBlockMode' || key === 'cookieBlocking') {
+          await syncDynamicRules();
+        }
+        // Switching to "block all cookies" should also clear what's already there,
+        // not just block future ones.
+        if (key === 'cookieBlocking' && value === 'all') {
+          await clearCookiesForHost(hostname);
+        }
+
         sendResponse({ success: true });
       })();
       return true;
@@ -113,10 +145,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         incrementTabStat(tabId, 'adsBlocked', count);
         const state = getTabStateSync(tabId);
         if (state) {
-          chrome.action.setBadgeText({
-            text: String(state.adsBlocked),
-            tabId,
-          });
+          const total = state.adsBlocked + state.trackersBlocked + state.fingerprintBlocked;
+          setBadgeSafe(tabId, String(total));
         }
       }
       sendResponse({ success: true });
@@ -139,11 +169,9 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
 
     // Update badge
     if (!settings.enabled) {
-      chrome.action.setBadgeText({ text: 'OFF', tabId: details.tabId });
-      chrome.action.setBadgeBackgroundColor({ color: '#666', tabId: details.tabId });
+      setBadgeSafe(details.tabId, 'OFF', '#666');
     } else {
-      chrome.action.setBadgeText({ text: '', tabId: details.tabId });
-      chrome.action.setBadgeBackgroundColor({ color: '#FF5500', tabId: details.tabId });
+      setBadgeSafe(details.tabId, '', '#FF5500');
     }
   } catch {
     // Invalid URL
@@ -155,18 +183,31 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   removeTabState(tabId);
 });
 
-// Track blocked requests via declarativeNetRequest feedback
+// Track blocked requests via declarativeNetRequest feedback.
+// Disjoint bucketing — every block lands in exactly one counter:
+//   - ublock_privacy ruleset → fingerprintBlocked (privacy/fingerprinting list)
+//   - resource type === 'script' → trackersBlocked (popup label "Scripts blocked")
+//   - everything else → adsBlocked
+// The badge shows the umbrella total so the visible number doesn't drop after re-bucketing.
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   const url = info.request.url;
-  if (info.request.tabId >= 0 && (url.startsWith('http://') || url.startsWith('https://'))) {
-    incrementTabStat(info.request.tabId, 'adsBlocked');
-    const state = getTabStateSync(info.request.tabId);
-    if (state) {
-      chrome.action.setBadgeText({
-        text: String(state.adsBlocked),
-        tabId: info.request.tabId,
-      });
-    }
+  if (info.request.tabId < 0) return;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+
+  let bucket: 'adsBlocked' | 'trackersBlocked' | 'fingerprintBlocked';
+  if (info.rule.rulesetId === 'ublock_privacy') {
+    bucket = 'fingerprintBlocked';
+  } else if (info.request.type === 'script') {
+    bucket = 'trackersBlocked';
+  } else {
+    bucket = 'adsBlocked';
+  }
+  incrementTabStat(info.request.tabId, bucket);
+
+  const state = getTabStateSync(info.request.tabId);
+  if (state) {
+    const total = state.adsBlocked + state.trackersBlocked + state.fingerprintBlocked;
+    setBadgeSafe(info.request.tabId, String(total));
   }
 });
 
