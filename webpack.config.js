@@ -7,7 +7,6 @@ module.exports = {
     'service-worker': './src/background/service-worker.ts',
     'cosmetic-observer': './src/content/cosmetic-observer.ts',
     'youtube-ad-blocker': './src/content/youtube-ad-blocker.ts',
-    'twitch-ad-blocker': './src/content/twitch-ad-blocker.ts',
     'popup': './src/popup/popup.ts',
   },
   output: {
@@ -50,5 +49,11 @@ module.exports = {
   ],
   optimization: {
     minimize: false,
+  },
+  // Asset-size warnings are aimed at HTTP-served bundles. This is a packaged
+  // browser extension — the rulesets and WASM blob are local resources, not
+  // network downloads, so the budget doesn't apply.
+  performance: {
+    hints: false,
   },
 };

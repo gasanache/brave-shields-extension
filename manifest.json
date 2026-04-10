@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brave Shields",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Ad and tracker blocking powered by Brave's adblock engine",
 
   "permissions": [
@@ -11,10 +11,13 @@
     "scripting",
     "activeTab",
     "alarms",
-    "webNavigation"
+    "webNavigation",
+    "cookies"
   ],
 
   "host_permissions": ["<all_urls>"],
+
+  "incognito": "split",
 
   "background": {
     "service_worker": "service-worker.js"
@@ -35,13 +38,6 @@
     {
       "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"],
       "js": ["youtube-ad-blocker.js"],
-      "run_at": "document_start",
-      "world": "MAIN",
-      "all_frames": true
-    },
-    {
-      "matches": ["https://www.twitch.tv/*"],
-      "js": ["twitch-ad-blocker.js"],
       "run_at": "document_start",
       "world": "MAIN",
       "all_frames": true
@@ -69,6 +65,11 @@
         "id": "peter_lowe",
         "enabled": true,
         "path": "rulesets/peter-lowe.json"
+      },
+      {
+        "id": "ublock_privacy",
+        "enabled": true,
+        "path": "rulesets/ublock-privacy.json"
       }
     ]
   },

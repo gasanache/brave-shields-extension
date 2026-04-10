@@ -31,11 +31,3 @@ export interface CosmeticResources {
   generichide: boolean;
 }
 
-export type MessageType =
-  | { type: 'GET_HIDDEN_SELECTORS'; classes: string[]; ids: string[]; exceptions: string[] }
-  | { type: 'GET_SHIELDS_STATUS'; tabId?: number; hostname?: string }
-  | { type: 'TOGGLE_SHIELDS'; tabId: number; hostname: string; enabled: boolean }
-  | { type: 'GET_STATS'; tabId?: number }
-  | { type: 'UPDATE_SITE_SETTING'; hostname: string; key: string; value: string | boolean }
-  | { type: 'GET_COSMETIC_RESOURCES'; url: string }
-  | { type: 'SITE_AD_BLOCKED'; count?: number };

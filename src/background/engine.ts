@@ -9,7 +9,6 @@ declare const self: ServiceWorkerGlobalScope & {
 };
 
 interface WasmEngineInstance {
-  check_network_request(url: string, source_url: string, request_type: string): any;
   url_cosmetic_resources(url: string): any;
   hidden_class_id_selectors(classes: string[], ids: string[], exceptions: string[]): string[];
   serialize(): Uint8Array;
@@ -90,10 +89,6 @@ export async function initEngine(): Promise<void> {
   return initPromise;
 }
 
-export function getEngine(): WasmEngineInstance | null {
-  return engineInstance;
-}
-
 export function getCosmeticResources(url: string): CosmeticResources | null {
   if (!engineInstance) return null;
   try {
@@ -123,15 +118,3 @@ export function getHiddenSelectors(
   }
 }
 
-export function checkNetworkRequest(
-  url: string,
-  sourceUrl: string,
-  requestType: string
-): { matched: boolean; redirect?: string; exception?: string } | null {
-  if (!engineInstance) return null;
-  try {
-    return engineInstance.check_network_request(url, sourceUrl, requestType);
-  } catch {
-    return null;
-  }
-}

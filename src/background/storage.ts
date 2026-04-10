@@ -45,19 +45,15 @@ function persistTabStates(): void {
 // Eagerly load on module init
 ensureSessionLoaded();
 
-export async function getGlobalEnabled(): Promise<boolean> {
-  const result = await chrome.storage.local.get(STORAGE_KEYS.GLOBAL_ENABLED);
-  return result[STORAGE_KEYS.GLOBAL_ENABLED] ?? true;
-}
-
-export async function setGlobalEnabled(enabled: boolean): Promise<void> {
-  await chrome.storage.local.set({ [STORAGE_KEYS.GLOBAL_ENABLED]: enabled });
-}
-
 export async function getSiteSettings(hostname: string): Promise<SiteSettings> {
   const result = await chrome.storage.local.get(STORAGE_KEYS.SITE_SETTINGS);
   const all = result[STORAGE_KEYS.SITE_SETTINGS] ?? {};
   return all[hostname] ?? { ...DEFAULT_SITE_SETTINGS };
+}
+
+export async function getAllSiteSettings(): Promise<Record<string, SiteSettings>> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.SITE_SETTINGS);
+  return result[STORAGE_KEYS.SITE_SETTINGS] ?? {};
 }
 
 export async function setSiteSettings(hostname: string, settings: SiteSettings): Promise<void> {
@@ -74,11 +70,6 @@ export async function getTabState(tabId: number): Promise<TabState | undefined> 
 
 export function getTabStateSync(tabId: number): TabState | undefined {
   return tabStates.get(tabId);
-}
-
-export function setTabState(tabId: number, state: TabState): void {
-  tabStates.set(tabId, state);
-  persistTabStates();
 }
 
 export function incrementTabStat(

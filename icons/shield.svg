@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24" fill="none">
+  <defs>
+    <linearGradient id="bs-shield-fill" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ff7547"/>
+      <stop offset="55%" stop-color="#fb542b"/>
+      <stop offset="100%" stop-color="#c93410"/>
+    </linearGradient>
+    <linearGradient id="bs-shield-shine" x1="0%" y1="0%" x2="100%" y2="70%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Base shield with vertical gradient -->
+  <path
+    d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
+    fill="url(#bs-shield-fill)"
+  />
+  <!-- Diagonal highlight overlay (top-left → fade) -->
+  <path
+    d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
+    fill="url(#bs-shield-shine)"
+  />
+  <!-- Subtle inner stroke for crisper edge -->
+  <path
+    d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
+    fill="none"
+    stroke="rgba(0,0,0,0.18)"
+    stroke-width="0.5"
+  />
+</svg>

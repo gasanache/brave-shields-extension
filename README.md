@@ -8,8 +8,8 @@ Works on Chrome, Edge, Arc, Vivaldi, Opera, [Thorium](https://thorium.rocks/) �
 
 ## What it blocks
 
-- Ads, trackers, fingerprinting scripts — ~15k DNR rules from EasyList, EasyPrivacy, uBlock filters, and Peter Lowe's list
-- Cosmetic junk (banners, sponsored slots, "around the web" garbage) — ~4,800 per-site CSS rulesets generated from the adblock-rust engine
+- Ads, trackers, fingerprinting scripts — ~16k DNR rules from EasyList, EasyPrivacy, uBlock filters, and Peter Lowe's list
+- Cosmetic junk (banners, sponsored slots, "around the web" garbage) — ~5,300 per-site CSS rulesets generated from the adblock-rust engine
 - YouTube video ads — hooks `fetch` and `XMLHttpRequest` to strip `adPlacements`/`playerAds`/`adSlots` from API responses before the player ever sees them, auto-skips anything that slips through
 - Twitch ads — intercepts GraphQL ad operations and strips stitched ad segments out of HLS playlists
 
@@ -17,11 +17,21 @@ Works on Chrome, Edge, Arc, Vivaldi, Opera, [Thorium](https://thorium.rocks/) �
 
 The extension runs in three layers:
 
-**Service worker** — loads the adblock-rust WASM engine, manages DNR rulesets, tracks per-tab stats, persists everything to `chrome.storage.session` (because Chrome will kill your service worker whenever it feels like it and your in-memory state goes with it).
+**Service worker** — loads the adblock-rust WASM engine, manages the static DNR rulesets, recomputes dynamic per-site rules whenever you flip a setting (`site-modes.ts`), tracks per-tab stats, persists everything to `chrome.storage.session` (because Chrome will kill your service worker whenever it feels like it and your in-memory state goes with it).
 
 **Content scripts (ISOLATED world)** — `cosmetic-observer.ts` watches DOM mutations, batches new class/ID values, sends them to the service worker, gets back CSS selectors to hide. Also acts as a relay for the MAIN world scripts since those can't talk to `chrome.runtime` directly.
 
 **Content scripts (MAIN world)** — `youtube-ad-blocker.ts` patches `fetch` and `XMLHttpRequest` to strip ad data from YouTube API responses. `twitch-ad-blocker.ts` patches `fetch` and `Worker` to intercept GraphQL ad requests and HLS playlists. Both run at `document_start` and post blocked counts back via `window.postMessage` → cosmetic observer → service worker.
+
+## Per-site controls
+
+The popup gives you per-hostname overrides:
+
+- **Shields toggle** — turn the whole engine off for a site you trust (or one that breaks)
+- **Ad blocking** — *Standard* uses the filter lists; *Aggressive* adds an extra ~20 first-party trackers (Google Analytics, Hotjar, Segment, FullStory, Amplitude, etc.) that the standard lists tend to leave alone to avoid breakage
+- **Cookie blocking** — *Cross-site* (default) strips `cookie`/`set-cookie` headers from third-party requests via DNR `modifyHeaders`; *All* strips them everywhere on the site and also wipes existing cookies via `chrome.cookies` so you don't have to wait for the next request to log out; *None* lets everything through
+
+Settings persist in `chrome.storage.local` and are enforced by dynamic DNR rules that the service worker recomputes on every change.
 
 ## Some things that were annoying to get right
 
@@ -35,6 +45,10 @@ The extension runs in three layers:
 
 **The +1 ghost.** Every time you opened the popup, the blocked count went up by 1. Chrome was counting the popup's own resource loads (`chrome-extension://...`) through `onRuleMatchedDebug` and attributing them to the active tab. Fixed by filtering to only `http://`/`https://` URLs.
 
+**Chrome's DNR enums.** `@types/chrome` declares `ResourceType`, `RuleActionType`, `DomainType`, `HeaderOperation` as real TypeScript enums — but Chrome doesn't expose them at runtime. The API just accepts string literals, so importing the enums for their values throws `ReferenceError`, and the type system fights you the moment you try to build a rule object. Fix is a local `LocalRule` interface with string literal unions and a single `as unknown as chrome.declarativeNetRequest.Rule[]` cast at the `updateDynamicRules` boundary.
+
+**The jumping pill.** The segmented controls in the popup use a sliding indicator pill driven by JS reading `offsetLeft`/`offsetWidth` of the active button. On popup reopen with a non-default value, the pill visibly jumped from the default position to the real one — the CSS rule that was supposed to suppress the transition during `.loading` was racing the async state fetch. Fix is an inline `transition: none` + forced reflow (`void indicator.offsetHeight`) in the JS itself, so the first paint commits without interpolation regardless of any CSS source.
+
 ## Build
 
 You need Node and Rust with `wasm-pack`.
@@ -44,17 +58,24 @@ npm install
 npm run build          # everything: wasm, lists, dnr, cosmetic, engine, webpack
 
 # or one at a time:
-npm run build:wasm     # rust → wasm
-npm run build:lists    # download filter lists
-npm run build:dnr      # abp rules → chrome dnr json
-npm run build:cosmetic # extract element hiding css
-npm run build:engine   # serialize adblock-rust engine
+npm run build:wasm      # rust → wasm
+npm run build:lists     # download filter lists
+npm run build:dnr       # abp rules → chrome dnr json
+npm run build:cosmetic  # extract element hiding css
+npm run build:engine    # serialize adblock-rust engine
 npm run build:extension # webpack bundle
 
-npm run dev            # watch mode
+npm run build:icons     # regenerate toolbar PNGs from icons/shield.svg
+                        # (opt-in — not in the main build chain since icons rarely change)
+
+npm run dev             # watch mode
 ```
 
 Then load `dist/` as an unpacked extension in `chrome://extensions`.
+
+### Incognito
+
+The manifest declares `"incognito": "split"` so each profile runs its own service worker, storage, and dynamic rules — no state leaks between regular and private windows. Chrome still requires you to flip the per-install toggle yourself: open the extension's details page and enable **Allow in InCognito**. The popup shows a one-click hint banner until you do.
 
 ## Filter lists
 

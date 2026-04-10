@@ -193,7 +193,7 @@ function main(): void {
     fs.mkdirSync(RULESETS_DIR, { recursive: true });
   }
 
-  const lists = ['easylist', 'easyprivacy', 'ublock-filters', 'peter-lowe'];
+  const lists = ['easylist', 'easyprivacy', 'ublock-filters', 'peter-lowe', 'ublock-privacy'];
 
   for (const listId of lists) {
     console.log(`Converting ${listId}...`);

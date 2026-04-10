@@ -74,7 +74,7 @@ function main(): void {
     fs.mkdirSync(SPECIFIC_DIR, { recursive: true });
   }
 
-  const lists = ['easylist', 'easyprivacy', 'ublock-filters', 'peter-lowe'];
+  const lists = ['easylist', 'easyprivacy', 'ublock-filters', 'peter-lowe', 'ublock-privacy'];
   const genericSelectors = new Set<string>();
   const domainSelectors = new Map<string, Set<string>>();
 
