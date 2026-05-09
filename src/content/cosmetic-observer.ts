@@ -119,17 +119,9 @@ window.addEventListener('message', (event) => {
 });
 
 // Start observing once document is ready
-if (document.documentElement) {
-  // Collect initial classes/ids
-  collectClassesAndIds(document.documentElement);
-  scheduleBatch();
-
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  });
-} else {
-  document.addEventListener('DOMContentLoaded', () => {
+function startObserving(): void {
+  if (document.documentElement) {
+    // Collect initial classes/ids
     collectClassesAndIds(document.documentElement);
     scheduleBatch();
 
@@ -137,5 +129,94 @@ if (document.documentElement) {
       childList: true,
       subtree: true,
     });
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      collectClassesAndIds(document.documentElement);
+      scheduleBatch();
+
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    });
+  }
+}
+
+// Iframes need to ask the top frame for its hostname so the per-tab
+// shields-off setting propagates. Same-origin: read directly. Cross-origin:
+// postMessage handshake (top frame replies via the listener below).
+
+const TOP_HOSTNAME_REQ = '__SHIELDS_TOP_HOSTNAME_REQ__';
+const TOP_HOSTNAME_RES = '__SHIELDS_TOP_HOSTNAME_RES__';
+const TOP_HOSTNAME_TIMEOUT_MS = 200;
+
+window.addEventListener('message', (event) => {
+  if (window !== window.top) return;
+  const data = event.data;
+  if (!data || data.type !== TOP_HOSTNAME_REQ) return;
+  if (!event.source || !('postMessage' in event.source)) return;
+  try {
+    (event.source as Window).postMessage(
+      { type: TOP_HOSTNAME_RES, id: data.id, hostname: window.location.hostname },
+      { targetOrigin: '*' }
+    );
+  } catch {
+    // Detached frame
+  }
+});
+
+async function getEffectiveHostname(): Promise<string> {
+  if (window === window.top) return window.location.hostname;
+
+  try {
+    return window.top!.location.hostname;
+  } catch {
+    // Cross-origin
+  }
+
+  return new Promise<string>((resolve) => {
+    let done = false;
+    const id = Math.random().toString(36).slice(2);
+
+    const handler = (event: MessageEvent) => {
+      if (done) return;
+      const data = event.data;
+      if (!data || data.type !== TOP_HOSTNAME_RES || data.id !== id) return;
+      if (event.source !== window.top) return;
+      done = true;
+      window.removeEventListener('message', handler);
+      resolve(data.hostname || window.location.hostname);
+    };
+    window.addEventListener('message', handler);
+
+    try {
+      window.top!.postMessage({ type: TOP_HOSTNAME_REQ, id }, '*');
+    } catch {
+      // Detached top — timeout below will fall back.
+    }
+
+    setTimeout(() => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('message', handler);
+      resolve(window.location.hostname);
+    }, TOP_HOSTNAME_TIMEOUT_MS);
   });
 }
+
+// Fail-open if SW is slow/unavailable so we don't break shields-on sites.
+(async () => {
+  let enabled = true;
+  try {
+    const hostname = await getEffectiveHostname();
+    const resp = await chrome.runtime.sendMessage({
+      type: 'GET_SHIELDS_STATUS',
+      hostname,
+    });
+    enabled = resp?.enabled ?? true;
+  } catch {
+    // SW not ready / context invalidated
+  }
+  if (!enabled) return;
+  startObserving();
+})();

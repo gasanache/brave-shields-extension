@@ -31,7 +31,7 @@ The popup gives you per-hostname overrides:
 - **Ad blocking** — *Standard* uses the filter lists; *Aggressive* adds an extra ~20 first-party trackers (Google Analytics, Hotjar, Segment, FullStory, Amplitude, etc.) that the standard lists tend to leave alone to avoid breakage
 - **Cookie blocking** — *Cross-site* (default) strips `set-cookie` from third-party responses via DNR `modifyHeaders` so trackers can't store new cookies on you, but leaves the request `cookie` header alone so existing logged-in sessions (SSO bounces, OAuth callbacks, multi-domain auth) keep working; *All* strips both request and response cookie headers everywhere on the site and also wipes existing cookies via `chrome.cookies` so you don't have to wait for the next request to log out; *None* lets everything through
 
-Settings persist in `chrome.storage.local` and are enforced by dynamic DNR rules that the service worker recomputes on every change.
+Settings persist in `chrome.storage.local` and are enforced by dynamic DNR rules that the service worker recomputes on every change. Toggling shields off installs a high-priority `allowAllRequests` rule for that hostname so the static filter lists stop firing on it, gates `cosmetic/generic.css` and the DOM-mutation observer, exempts the site from cookie-blocking rules, and dynamically unregisters the YouTube content script (which lives in MAIN world and can't query settings live).
 
 ## Some things that were annoying to get right
 

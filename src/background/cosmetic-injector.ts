@@ -8,16 +8,41 @@ export function setupCosmeticInjector(): void {
     // Skip non-http(s) URLs
     if (!url.startsWith('http://') && !url.startsWith('https://')) return;
 
-    let hostname: string;
+    // Use top-frame URL for the shields check so iframes inherit the tab's
+    // setting. Per-site cosmetic lookup further down still uses the frame's
+    // own URL — that's per-origin, not per-tab.
+    let topUrl = url;
+    if (frameId !== 0) {
+      try {
+        const topFrame = await chrome.webNavigation.getFrame({ tabId, frameId: 0 });
+        if (topFrame && topFrame.url) topUrl = topFrame.url;
+      } catch {
+        return;
+      }
+    }
+
+    let topHostname: string;
     try {
-      hostname = new URL(url).hostname;
+      topHostname = new URL(topUrl).hostname;
     } catch {
       return;
     }
 
     // Check if shields are enabled for this site
-    const settings = await getSiteSettings(hostname);
+    const settings = await getSiteSettings(topHostname);
     if (!settings.enabled) return;
+
+    // generic.css used to ship as a static manifest content_script — moved here
+    // so it's gated by the same enabled check as everything else.
+    try {
+      await chrome.scripting.insertCSS({
+        target: { tabId, frameIds: [frameId] },
+        files: ['cosmetic/generic.css'],
+        origin: 'USER',
+      });
+    } catch (err) {
+      console.debug('[Shields] generic.css injection failed:', err);
+    }
 
     // Get cosmetic resources from the WASM engine
     const resources = getCosmeticResources(url);

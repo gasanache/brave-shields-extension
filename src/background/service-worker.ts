@@ -12,6 +12,7 @@ import {
   setTabEnabled,
 } from './storage';
 import { syncDynamicRules, clearCookiesForHost } from './site-modes';
+import { syncYouTubeScript } from './youtube-script';
 import { UPDATE_ALARM_NAME, UPDATE_INTERVAL_MINUTES } from '../shared/constants';
 
 // chrome.action.set* APIs reject with "No tab with id: NNN" if the tab closes
@@ -37,6 +38,9 @@ initEngine().catch((err) => console.error('[Shields] Engine init failed:', err))
 // Sync per-site dynamic DNR rules (aggressive ad blocking + cookie blocking).
 // Runs on every SW startup so the rules survive worker suspension/extension reload.
 syncDynamicRules();
+
+// Sync the dynamic registration of the YouTube ad-blocker content script.
+syncYouTubeScript();
 
 // Set up cosmetic filtering injection
 setupCosmeticInjector();
@@ -90,6 +94,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Re-sync dynamic rules so a shields-off site is exempted from the
         // default cross-site cookie rule (and any aggressive rules it had on).
         await syncDynamicRules();
+        // Re-evaluate the YouTube content-script registration.
+        await syncYouTubeScript();
 
         sendResponse({ success: true });
       })();
@@ -117,9 +123,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         (settings as any)[key] = value;
         await setSiteSettings(hostname, settings);
 
-        // adBlockMode + cookieBlocking are enforced by dynamic DNR rules — recompute on every change.
-        if (key === 'adBlockMode' || key === 'cookieBlocking') {
+        // adBlockMode + cookieBlocking + enabled are enforced by dynamic DNR
+        // rules — recompute on every change.
+        if (key === 'adBlockMode' || key === 'cookieBlocking' || key === 'enabled') {
           await syncDynamicRules();
+        }
+        // Toggling enabled re-evaluates the YouTube content-script registration.
+        if (key === 'enabled') {
+          await syncYouTubeScript();
         }
         // Switching to "block all cookies" should also clear what's already there,
         // not just block future ones.

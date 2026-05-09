@@ -6,7 +6,10 @@ const AGGRESSIVE_RULE_ID_START = 1;
 const AGGRESSIVE_RULE_ID_END = 50;
 const COOKIE_RULE_ID_CROSS_SITE = 100;
 const COOKIE_RULE_ID_ALL = 101;
+const SHIELDS_OFF_ALLOW_RULE_ID = 200;
 const RULE_PRIORITY = 100;
+// Higher than any static-list rule so the allow overrides EasyList et al.
+const SHIELDS_OFF_PRIORITY = 1000;
 
 // First-party trackers that the standard filter lists tend to allow on the
 // site that's loading them (via ~third-party exceptions or because the lists
@@ -79,7 +82,7 @@ interface LocalRule {
   id: number;
   priority: number;
   action: {
-    type: 'block' | 'modifyHeaders';
+    type: 'block' | 'modifyHeaders' | 'allowAllRequests';
     requestHeaders?: Array<{ header: string; operation: 'remove' | 'set' | 'append' }>;
     responseHeaders?: Array<{ header: string; operation: 'remove' | 'set' | 'append' }>;
   };
@@ -87,6 +90,7 @@ interface LocalRule {
     urlFilter?: string;
     initiatorDomains?: string[];
     excludedInitiatorDomains?: string[];
+    requestDomains?: string[];
     domainType?: 'firstParty' | 'thirdParty';
     resourceTypes?: string[];
   };
@@ -100,17 +104,22 @@ interface SiteBuckets {
   // by disabling shields entirely. All go in excludedInitiatorDomains of the
   // global cross-site rule.
   cookieDefaultExempt: string[];
+  // Shields-off hosts — get a high-priority allowAllRequests rule.
+  shieldsOff: string[];
 }
 
 function bucketSites(allSettings: Record<string, { enabled: boolean; adBlockMode: string; cookieBlocking: string }>): SiteBuckets {
   const aggressive: string[] = [];
   const cookieAll: string[] = [];
   const cookieDefaultExempt: string[] = [];
+  const shieldsOff: string[] = [];
 
   for (const [hostname, settings] of Object.entries(allSettings)) {
     if (!settings.enabled) {
-      // Shields off — exempt from default cross-site enforcement and don't apply
-      // any aggressive/all-cookie rules either (loop continues).
+      // Shields off — bypass everything: static DNR rules (via the
+      // allowAllRequests rule), default cross-site cookie blocking, and the
+      // optional aggressive/all-cookie rules below (loop continues).
+      shieldsOff.push(hostname);
       cookieDefaultExempt.push(hostname);
       continue;
     }
@@ -123,11 +132,26 @@ function bucketSites(allSettings: Record<string, { enabled: boolean; adBlockMode
     }
   }
 
-  return { aggressive, cookieAll, cookieDefaultExempt };
+  return { aggressive, cookieAll, cookieDefaultExempt, shieldsOff };
 }
 
 function buildRules(buckets: SiteBuckets): LocalRule[] {
   const rules: LocalRule[] = [];
+
+  // Static DNR rulesets (EasyList et al.) don't support per-site exemptions,
+  // so we override them with a higher-priority allowAllRequests rule.
+  // allowAllRequests on the main_frame propagates to every subresource within.
+  if (buckets.shieldsOff.length > 0) {
+    rules.push({
+      id: SHIELDS_OFF_ALLOW_RULE_ID,
+      priority: SHIELDS_OFF_PRIORITY,
+      action: { type: 'allowAllRequests' },
+      condition: {
+        requestDomains: buckets.shieldsOff,
+        resourceTypes: ['main_frame', 'sub_frame'],
+      },
+    });
+  }
 
   // Aggressive ad blocking — one rule per pattern, all aggressive sites share
   // the same initiatorDomains list (much cheaper than rules-per-site).
@@ -210,7 +234,8 @@ export async function syncDynamicRules(): Promise<void> {
         (r) =>
           (r.id >= AGGRESSIVE_RULE_ID_START && r.id <= AGGRESSIVE_RULE_ID_END) ||
           r.id === COOKIE_RULE_ID_CROSS_SITE ||
-          r.id === COOKIE_RULE_ID_ALL
+          r.id === COOKIE_RULE_ID_ALL ||
+          r.id === SHIELDS_OFF_ALLOW_RULE_ID
       )
       .map((r) => r.id);
 
