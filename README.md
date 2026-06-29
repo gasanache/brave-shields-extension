@@ -2,7 +2,7 @@
 
 Brave's ad blocker without the rest of Brave. It's the `adblock-rust` engine compiled to WASM and packaged as a plain MV3 Chromium extension. No wallet, no news feed, no VPN, no AI.
 
-Works on any Chromium browser: Chrome, Edge, Vivaldi, Opera, [Thorium](https://thorium.rocks/), and so on.
+Works on any Chromium browser: Chrome, Edge, Vivaldi, Opera, [Thorium](https://thorium.rocks/), [Helium](https://helium.computer/), and so on.
 
 ## What it blocks
 
