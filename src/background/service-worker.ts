@@ -13,6 +13,7 @@ import {
 } from './storage';
 import { syncDynamicRules, clearCookiesForHost } from './site-modes';
 import { syncYouTubeScript } from './youtube-script';
+import { syncTwitchScript } from './twitch-script';
 import { UPDATE_ALARM_NAME, UPDATE_INTERVAL_MINUTES } from '../shared/constants';
 
 // chrome.action.set* APIs reject with "No tab with id: NNN" if the tab closes
@@ -39,8 +40,9 @@ initEngine().catch((err) => console.error('[Shields] Engine init failed:', err))
 // Runs on every SW startup so the rules survive worker suspension/extension reload.
 syncDynamicRules();
 
-// Sync the dynamic registration of the YouTube ad-blocker content script.
+// Sync the dynamic registration of the YouTube + Twitch ad-blocker content scripts.
 syncYouTubeScript();
+syncTwitchScript();
 
 // Set up cosmetic filtering injection
 setupCosmeticInjector();
@@ -94,8 +96,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Re-sync dynamic rules so a shields-off site is exempted from the
         // default cross-site cookie rule (and any aggressive rules it had on).
         await syncDynamicRules();
-        // Re-evaluate the YouTube content-script registration.
+        // Re-evaluate the YouTube + Twitch content-script registration.
         await syncYouTubeScript();
+        await syncTwitchScript();
 
         sendResponse({ success: true });
       })();
@@ -128,9 +131,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (key === 'adBlockMode' || key === 'cookieBlocking' || key === 'enabled') {
           await syncDynamicRules();
         }
-        // Toggling enabled re-evaluates the YouTube content-script registration.
+        // Toggling enabled re-evaluates the YouTube + Twitch content-script registration.
         if (key === 'enabled') {
           await syncYouTubeScript();
+          await syncTwitchScript();
         }
         // Switching to "block all cookies" should also clear what's already there,
         // not just block future ones.
