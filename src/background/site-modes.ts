@@ -57,6 +57,24 @@ const ALL_RESOURCE_TYPES = [
   'other',
 ];
 
+// Resource types for the default cross-site cookie rule. We only strip Set-Cookie
+// on passive subresources (pixels, beacons, scripts). Navigations, frames and
+// fetch/XHR are left out on purpose: cross-domain logins (MS/Outlook, Steam,
+// OAuth bounces, silent-SSO iframes) look thirdParty to DNR, so stripping their
+// Set-Cookie logs you out and the page redirect-loops.
+const COOKIE_CROSS_SITE_RESOURCE_TYPES = [
+  'stylesheet',
+  'script',
+  'image',
+  'font',
+  'object',
+  'ping',
+  'csp_report',
+  'media',
+  'websocket',
+  'other',
+];
+
 // Resource types for aggressive ad-blocking — main_frame is excluded so we
 // don't block top-level navigation to a site that happens to match a pattern.
 const SUB_RESOURCE_TYPES = [
@@ -170,19 +188,14 @@ function buildRules(buckets: SiteBuckets): LocalRule[] {
     });
   }
 
-  // Default cross-site cookie blocking — strips Set-Cookie from third-party
-  // RESPONSES so trackers can't store new cookies on you. We deliberately do
-  // NOT strip the Cookie request header: many legitimate auth flows make
-  // background requests to a different eTLD+1 (e.g., youtube.com → accounts.
-  // google.com for token refresh, *.amazonaws.com for signed assets, OAuth
-  // bounces), and stripping the request cookie on those breaks logged-in
-  // sessions. Existing first-party login state is unaffected; the privacy
-  // benefit is that third parties can't establish *new* tracking cookies.
-  // Sites that opted out (cookieBlocking 'all'/'none' or shields off) are
-  // exempted; 'all' is enforced by a stricter rule below.
+  // Default cross-site cookie blocking: drop Set-Cookie from third-party
+  // subresources (see COOKIE_CROSS_SITE_RESOURCE_TYPES). We leave the request
+  // Cookie header alone since plenty of auth flows hit another eTLD+1 in the
+  // background (token refresh, signed S3 assets, OAuth) and stripping it logs
+  // you out. Opted-out sites are exempted; 'all' mode is handled below.
   const crossSiteCondition: LocalRule['condition'] = {
     domainType: 'thirdParty',
-    resourceTypes: ALL_RESOURCE_TYPES,
+    resourceTypes: COOKIE_CROSS_SITE_RESOURCE_TYPES,
   };
   if (buckets.cookieDefaultExempt.length > 0) {
     crossSiteCondition.excludedInitiatorDomains = buckets.cookieDefaultExempt;
