@@ -14,7 +14,6 @@ export interface SiteSettings {
   enabled: boolean;
   adBlockMode: 'standard' | 'aggressive';
   cookieBlocking: 'cross-site' | 'all' | 'none';
-  fingerprintBlocking: boolean;
 }
 
 export interface FilterListInfo {

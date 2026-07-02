@@ -258,8 +258,39 @@
     }
   }
 
-  // Poll for ads that bypass the intercept
-  setInterval(skipAdIfPresent, 500);
+  // --- 6b. Dismiss YouTube's "Ad blockers are not allowed" enforcement wall ---
+  // Blocking the ads makes YouTube detect it and throw up a modal that pauses the
+  // video. Remove the dialog + backdrop, unlock page scroll, and resume playback.
+  function dismissAdblockWall(): void {
+    const enforcement = document.querySelector(
+      'ytd-enforcement-message-view-model, ytd-enforcement-dialog-view-model'
+    );
+    if (!enforcement) return;
+
+    // Remove the dialog wrapper (not the whole popup container — it can hold
+    // unrelated popups) plus any modal backdrops.
+    (enforcement.closest('tp-yt-paper-dialog') || enforcement).remove();
+    document
+      .querySelectorAll('tp-yt-iron-overlay-backdrop')
+      .forEach((b) => b.remove());
+
+    // The modal locks page scroll via inline overflow — clear it.
+    document.body?.style.removeProperty('overflow');
+    document.documentElement.style.removeProperty('overflow');
+    document.querySelector('ytd-app')?.removeAttribute('scrolling');
+
+    // The wall pauses the video — resume it.
+    const video =
+      document.querySelector<HTMLVideoElement>('video.html5-main-video') ||
+      document.querySelector<HTMLVideoElement>('video');
+    if (video && video.paused) video.play().catch(() => {});
+  }
+
+  // Poll for ads and the anti-adblock wall that bypass the intercept
+  setInterval(() => {
+    skipAdIfPresent();
+    dismissAdblockWall();
+  }, 500);
 
   // --- 7. CSS to hide ad UI elements ---
   const style = document.createElement('style');
@@ -283,6 +314,9 @@
     .ytd-merch-shelf-renderer,
     .ytd-statement-banner-renderer,
     tp-yt-paper-dialog.ytd-popup-container > ytd-enforcement-dialog-view-model,
+    ytd-enforcement-message-view-model,
+    tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),
+    tp-yt-paper-dialog:has(ytd-enforcement-dialog-view-model),
     .ytp-ad-skip-button-container { display: none !important; }
 
     /* Hide "Ad" badge on video */

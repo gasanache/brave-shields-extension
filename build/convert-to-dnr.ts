@@ -27,7 +27,10 @@ interface DnrRule {
 
 const LISTS_DIR = path.resolve(__dirname, '..', 'lists');
 const RULESETS_DIR = path.resolve(__dirname, '..', 'rulesets');
-const MAX_RULES_PER_RULESET = 5000;
+// Chrome guarantees 30,000 enabled static rules per extension. We keep the total
+// comfortably under that (~26k across all lists) so it loads on older Chromium
+// too, while shipping far more of each list than the old 5k cap did.
+const MAX_RULES_PER_RULESET = 10000;
 
 const RESOURCE_TYPE_MAP: Record<string, string> = {
   script: 'script',

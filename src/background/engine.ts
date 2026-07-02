@@ -111,7 +111,15 @@ export function getHiddenSelectors(
 ): string[] {
   if (!engineInstance) return [];
   try {
-    return engineInstance.hidden_class_id_selectors(classes, ids, exceptions);
+    // The WASM boundary requires Vec<String>. Drop any non-string values (DOM
+    // clobbering upstream can slip an element into the id/class arrays) so the
+    // whole batch doesn't throw and lose its cosmetic hiding.
+    const onlyStrings = (arr: string[]) => arr.filter((v): v is string => typeof v === 'string');
+    return engineInstance.hidden_class_id_selectors(
+      onlyStrings(classes),
+      onlyStrings(ids),
+      onlyStrings(exceptions)
+    );
   } catch (err) {
     console.error('[Shields] Hidden selectors error:', err);
     return [];

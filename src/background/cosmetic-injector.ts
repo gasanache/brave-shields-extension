@@ -32,20 +32,24 @@ export function setupCosmeticInjector(): void {
     const settings = await getSiteSettings(topHostname);
     if (!settings.enabled) return;
 
-    // generic.css used to ship as a static manifest content_script — moved here
-    // so it's gated by the same enabled check as everything else.
-    try {
-      await chrome.scripting.insertCSS({
-        target: { tabId, frameIds: [frameId] },
-        files: ['cosmetic/generic.css'],
-        origin: 'USER',
-      });
-    } catch (err) {
-      console.debug('[Shields] generic.css injection failed:', err);
+    // Get cosmetic resources for this frame from the WASM engine.
+    const resources = getCosmeticResources(url);
+
+    // generic.css is the generic cosmetic layer (site-agnostic hiding). Skip it
+    // when the engine flags this site as generichide-exempt — filter authors
+    // marked generic hiding as breaking here. Fail open if the engine isn't ready.
+    if (!resources || !resources.generichide) {
+      try {
+        await chrome.scripting.insertCSS({
+          target: { tabId, frameIds: [frameId] },
+          files: ['cosmetic/generic.css'],
+          origin: 'USER',
+        });
+      } catch (err) {
+        console.debug('[Shields] generic.css injection failed:', err);
+      }
     }
 
-    // Get cosmetic resources from the WASM engine
-    const resources = getCosmeticResources(url);
     if (!resources) return;
 
     // Inject hide selectors as CSS

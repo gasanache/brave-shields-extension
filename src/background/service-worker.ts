@@ -1,6 +1,5 @@
 import { initEngine, getHiddenSelectors, getCosmeticResources } from './engine';
 import { setupCosmeticInjector } from './cosmetic-injector';
-import { checkForUpdates } from './dnr-manager';
 import {
   getTabState,
   getTabStateSync,
@@ -14,7 +13,6 @@ import {
 import { syncDynamicRules, clearCookiesForHost } from './site-modes';
 import { syncYouTubeScript } from './youtube-script';
 import { syncTwitchScript } from './twitch-script';
-import { UPDATE_ALARM_NAME, UPDATE_INTERVAL_MINUTES } from '../shared/constants';
 
 // chrome.action.set* APIs reject with "No tab with id: NNN" if the tab closes
 // between when we schedule the call and when it runs. The badge is best-effort
@@ -72,6 +70,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           enabled: settings?.enabled ?? true,
           adBlockMode: settings?.adBlockMode ?? 'standard',
           cookieBlocking: settings?.cookieBlocking ?? 'cross-site',
+          // Whether filter authors flagged this site as generichide-exempt. The
+          // cosmetic observer uses it to skip generic hiding entirely.
+          generichide: hostname
+            ? getCosmeticResources(`https://${hostname}/`)?.generichide ?? false
+            : false,
           adsBlocked: tabState?.adsBlocked ?? 0,
           trackersBlocked: tabState?.trackersBlocked ?? 0,
           fingerprintBlocked: tabState?.fingerprintBlocked ?? 0,
@@ -116,7 +119,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'UPDATE_SITE_SETTING': {
       const { hostname, key, value } = message;
-      const VALID_KEYS = ['enabled', 'adBlockMode', 'cookieBlocking', 'fingerprintBlocking'];
+      const VALID_KEYS = ['enabled', 'adBlockMode', 'cookieBlocking'];
       if (!VALID_KEYS.includes(key)) {
         sendResponse({ success: false, error: 'Invalid setting key' });
         return false;
@@ -208,6 +211,11 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   const url = info.request.url;
   if (info.request.tabId < 0) return;
   if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+  // The dynamic cookie rules (100/101) and the shields-off allow rule (200) match
+  // broadly — every third-party subresource / navigation — and aren't ad blocks,
+  // so they'd wildly inflate the count. Aggressive block rules (1–50) and the
+  // static rulesets are real blocks and still count.
+  if (info.rule.rulesetId === '_dynamic' && info.rule.ruleId >= 100) return;
 
   let bucket: 'adsBlocked' | 'trackersBlocked' | 'fingerprintBlocked';
   if (info.rule.rulesetId === 'ublock_privacy') {
@@ -223,17 +231,6 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((info) => {
   if (state) {
     const total = state.adsBlocked + state.trackersBlocked + state.fingerprintBlocked;
     setBadgeSafe(info.request.tabId, String(total));
-  }
-});
-
-// Set up periodic filter list update checks
-chrome.alarms.create(UPDATE_ALARM_NAME, {
-  periodInMinutes: UPDATE_INTERVAL_MINUTES,
-});
-
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === UPDATE_ALARM_NAME) {
-    await checkForUpdates();
   }
 });
 

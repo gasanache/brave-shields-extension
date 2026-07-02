@@ -5,7 +5,9 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="shields-panel loading">
+  <!-- Default to the disabled/neutral look so the first paint never shows a false
+       "enabled" state. JS flips toward enabled only while .loading hides the panel. -->
+  <div class="shields-panel loading shields-disabled">
     <div class="header">
       <div class="shield-icon" id="shieldIcon">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
@@ -45,7 +47,7 @@
         <span id="hostname" class="hostname">—</span>
       </div>
       <label class="toggle">
-        <input type="checkbox" id="shieldsToggle" checked>
+        <input type="checkbox" id="shieldsToggle">
         <span class="slider"></span>
       </label>
     </div>

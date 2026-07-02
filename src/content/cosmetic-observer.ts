@@ -27,7 +27,9 @@ function collectClassesAndIds(node: Element): void {
       }
     }
   }
-  if (node.id && !seenIds.has(node.id)) {
+  // typeof guard: DOM clobbering (e.g. <form> with a control named "id") can make
+  // `.id` return an element instead of a string.
+  if (typeof node.id === 'string' && node.id && !seenIds.has(node.id)) {
     seenIds.add(node.id);
     pendingIds.add(node.id);
   }
@@ -43,7 +45,7 @@ function collectClassesAndIds(node: Element): void {
         }
       }
     }
-    if (child.id && !seenIds.has(child.id)) {
+    if (typeof child.id === 'string' && child.id && !seenIds.has(child.id)) {
       seenIds.add(child.id);
       pendingIds.add(child.id);
     }
@@ -207,6 +209,7 @@ async function getEffectiveHostname(): Promise<string> {
 // Fail-open if SW is slow/unavailable so we don't break shields-on sites.
 (async () => {
   let enabled = true;
+  let generichide = false;
   try {
     const hostname = await getEffectiveHostname();
     const resp = await chrome.runtime.sendMessage({
@@ -214,9 +217,13 @@ async function getEffectiveHostname(): Promise<string> {
       hostname,
     });
     enabled = resp?.enabled ?? true;
+    generichide = resp?.generichide ?? false;
   } catch {
     // SW not ready / context invalidated
   }
-  if (!enabled) return;
+  // The observer only ever produces GENERIC class/id hiding, so on a
+  // generichide-exempt site there's nothing for it to do (site-specific hiding
+  // still comes from the engine via the injector). Skip it to avoid over-hiding.
+  if (!enabled || generichide) return;
   startObserving();
 })();
