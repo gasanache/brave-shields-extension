@@ -28,16 +28,20 @@ export async function syncYouTubeScript(): Promise<void> {
       return;
     }
 
+    // youtube-ad-blocker strips the ad metadata; yt-sabr-fix removes the SABR
+    // backoff spinner that's left once the ad is gone (see yt-sabr-fix.ts).
+    const YOUTUBE_JS = ['youtube-ad-blocker.js', 'yt-sabr-fix.js'];
+
     if (isRegistered) {
       await chrome.scripting.updateContentScripts([
-        { id: YOUTUBE_SCRIPT_ID, matches: enabledMatches },
+        { id: YOUTUBE_SCRIPT_ID, matches: enabledMatches, js: YOUTUBE_JS },
       ]);
     } else {
       await chrome.scripting.registerContentScripts([
         {
           id: YOUTUBE_SCRIPT_ID,
           matches: enabledMatches,
-          js: ['youtube-ad-blocker.js'],
+          js: YOUTUBE_JS,
           runAt: 'document_start',
           world: 'MAIN' as chrome.scripting.ExecutionWorld,
           allFrames: true,

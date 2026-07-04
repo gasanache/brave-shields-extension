@@ -7,6 +7,7 @@ module.exports = {
     'service-worker': './src/background/service-worker.ts',
     'cosmetic-observer': './src/content/cosmetic-observer.ts',
     'youtube-ad-blocker': './src/content/youtube-ad-blocker.ts',
+    'yt-sabr-fix': './src/content/yt-sabr-fix.ts',
     'twitch-ad-blocker': './src/content/twitch-ad-blocker.ts',
     'popup': './src/popup/popup.ts',
   },

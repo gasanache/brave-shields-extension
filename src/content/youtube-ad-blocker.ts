@@ -317,6 +317,8 @@
     ytd-enforcement-message-view-model,
     tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),
     tp-yt-paper-dialog:has(ytd-enforcement-dialog-view-model),
+    ytd-notification-action-renderer,
+    yt-notification-action-renderer,
     .ytp-ad-skip-button-container { display: none !important; }
 
     /* Hide "Ad" badge on video */

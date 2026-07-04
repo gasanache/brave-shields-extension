@@ -7,7 +7,7 @@ Works on any Chromium browser: Chrome, Edge, Vivaldi, Opera, [Thorium](https://t
 ## What it blocks
 
 - Ads, trackers and fingerprinting scripts: ~16k DNR rules (EasyList, EasyPrivacy, uBlock, Peter Lowe) plus the WASM engine for cosmetic element hiding.
-- YouTube video ads: strips `adPlacements`/`playerAds`/`adSlots` out of the player API response before the page reads it, and skips anything that gets through.
+- YouTube video ads: strips `adPlacements`/`playerAds`/`adSlots` out of the player API response before the page reads it, and cancels YouTube's SABR ad-slot backoff so playback starts right away instead of hanging on a spinner.
 - Twitch ads: Twitch stitches ads into the HLS video stream, so when an ad shows up the script swaps to an ad-free backup stream for the duration of the break. Based on [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions). Twitch breaks this every so often, so expect the occasional miss.
 
 ## Per-site controls
@@ -39,7 +39,8 @@ EasyList, EasyPrivacy, uBlock filters and privacy, and Peter Lowe's list, all pu
 
 ## Credits
 
-- [Brave / adblock-rust](https://github.com/brave/adblock-rust) (MPL-2.0): the engine. Used as a Cargo dependency behind a thin WASM bridge; no Brave source is copied here.
+- [Brave / adblock-rust](https://github.com/brave/adblock-rust) (MPL-2.0): the engine, used as a Cargo dependency behind a thin WASM bridge.
+- [Brave / adblock-resources](https://github.com/brave/adblock-resources) (MPL-2.0): `yt-sabr-fix.ts` is their `brave-yt-sabr-fix.js` vendored as-is — it cancels YouTube's SABR ad-slot backoff (technique from [iter.ca](https://iter.ca/post/yt-adblock/)).
 - [EasyList](https://easylist.to/), [uBlock Origin / uAssets](https://github.com/uBlockOrigin/uAssets), [Peter Lowe](https://pgl.yoyo.org/adservers/): filter lists.
 - [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions) (pixeltris, MIT): the Twitch stream-swap method.
 - [Adblock Plus](https://adblockplus.org/): the ABP filter syntax the lists use.
