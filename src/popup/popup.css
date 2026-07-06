@@ -258,6 +258,94 @@ body {
   outline-offset: -3px;
 }
 
+/* Global settings section. Unlike the per-site .controls, these apply across
+   every site, so they stay interactive even when this site's shields are down. */
+.shields-disabled .controls.global-section {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* On a page we can't act on (chrome://, about:, etc.) the popup hides the Global
+   section entirely — be explicit so a future display rule can't unhide it
+   (mirrors .incognito-hint[hidden]). */
+.controls.global-section[hidden] {
+  display: none;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggle-row-text {
+  min-width: 0;
+}
+
+.toggle-row .control-label {
+  margin-bottom: 2px;
+}
+
+.control-desc {
+  font-size: 11px;
+  color: #777;
+  line-height: 1.3;
+}
+
+/* A row whose toggle is gated by another setting being on (JS also sets the
+   input's disabled attribute). */
+.toggle-row.row-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Compact styling for the Global rows — secondary settings; keep them visually
+   lighter than the per-site controls. Includes a miniature toggle variant
+   (28×15 track, 11px knob → 13px travel). */
+.controls.global-section {
+  padding-top: 10px;
+  margin-top: 2px;
+}
+
+.global-section .controls-header {
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+
+.global-section .control-group {
+  margin-bottom: 5px;
+}
+
+.global-section .control-label {
+  font-size: 10px;
+  margin-bottom: 0;
+}
+
+.global-section .control-desc {
+  font-size: 9px;
+}
+
+.global-section .toggle {
+  width: 28px;
+  height: 15px;
+}
+
+.global-section .slider {
+  border-radius: 8px;
+}
+
+.global-section .slider::before {
+  height: 11px;
+  width: 11px;
+  left: 2px;
+  bottom: 2px;
+}
+
+.global-section .toggle input:checked + .slider::before {
+  transform: translateX(13px);
+}
+
 /* Incognito hint — shown only when chrome.extension.isAllowedIncognitoAccess()
    is false and the user hasn't dismissed it. Sits below .controls so it doesn't
    compete with the primary on/off toggle. Chrome blocks any extension-side way

@@ -1,5 +1,5 @@
-import { TabState, SiteSettings } from '../shared/types';
-import { STORAGE_KEYS, DEFAULT_SITE_SETTINGS } from '../shared/constants';
+import { TabState, SiteSettings, GlobalSettings } from '../shared/types';
+import { STORAGE_KEYS, DEFAULT_SITE_SETTINGS, DEFAULT_GLOBAL_SETTINGS } from '../shared/constants';
 
 // In-memory cache — synced to chrome.storage.session so stats survive worker suspension
 let tabStates = new Map<number, TabState>();
@@ -61,6 +61,20 @@ export async function setSiteSettings(hostname: string, settings: SiteSettings):
   const all = result[STORAGE_KEYS.SITE_SETTINGS] ?? {};
   all[hostname] = settings;
   await chrome.storage.local.set({ [STORAGE_KEYS.SITE_SETTINGS]: all });
+}
+
+// Global (not per-site) settings. Spread over the defaults so newly-added keys
+// pick up their default value even for installs that saved an older shape.
+export async function getGlobalSettings(): Promise<GlobalSettings> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.GLOBAL_SETTINGS);
+  return { ...DEFAULT_GLOBAL_SETTINGS, ...(result[STORAGE_KEYS.GLOBAL_SETTINGS] ?? {}) };
+}
+
+export async function setGlobalSettings(patch: Partial<GlobalSettings>): Promise<void> {
+  const current = await getGlobalSettings();
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.GLOBAL_SETTINGS]: { ...current, ...patch },
+  });
 }
 
 export async function getTabState(tabId: number): Promise<TabState | undefined> {

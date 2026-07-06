@@ -64,6 +64,9 @@ async function init(): Promise<void> {
   const panel = document.querySelector('.shields-panel')!;
   const adBlockMode = document.getElementById('adBlockMode') as HTMLElement;
   const cookieBlocking = document.getElementById('cookieBlocking') as HTMLElement;
+  const forceEnglishToggle = document.getElementById('forceEnglishToggle') as HTMLInputElement;
+  const tzToggle = document.getElementById('tzToggle') as HTMLInputElement;
+  const tzRow = document.getElementById('tzRow') as HTMLElement;
 
   // Get active tab info
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -74,6 +77,9 @@ async function init(): Promise<void> {
     shieldsToggle.checked = false;
     shieldsToggle.disabled = true;
     panel.classList.add('shields-disabled');
+    // No HTTP(S) page to apply a global setting to — hide the Global section
+    // rather than render its toggle in a misleading always-OFF state.
+    panel.querySelector('.global-section')?.setAttribute('hidden', '');
     panel.classList.remove('loading');
     return;
   }
@@ -94,6 +100,9 @@ async function init(): Promise<void> {
     shieldsToggle.checked = false;
     shieldsToggle.disabled = true;
     panel.classList.add('shields-disabled');
+    // No HTTP(S) page to apply a global setting to — hide the Global section
+    // rather than render its toggle in a misleading always-OFF state.
+    panel.querySelector('.global-section')?.setAttribute('hidden', '');
     panel.classList.remove('loading');
     return;
   }
@@ -143,11 +152,51 @@ async function init(): Promise<void> {
     if (tab.id) chrome.tabs.reload(tab.id);
   });
 
+  // Global "Force English (US)" toggles. Set state while .loading still
+  // suppresses the slider transition (see popup.css), then wire the handlers.
+  // The US-time-zone row is a sub-setting: only meaningful (and only editable)
+  // while the master toggle is on.
+  const syncTzRowState = () => {
+    tzToggle.disabled = !forceEnglishToggle.checked;
+    tzRow.classList.toggle('row-disabled', !forceEnglishToggle.checked);
+  };
+
+  forceEnglishToggle.checked = state?.forceEnglishUS ?? true;
+  tzToggle.checked = state?.spoofTimezoneUS ?? true;
+  syncTzRowState();
+
+  forceEnglishToggle.addEventListener('change', async () => {
+    syncTzRowState();
+    await chrome.runtime.sendMessage({
+      type: 'UPDATE_GLOBAL_SETTING',
+      key: 'forceEnglishUS',
+      value: forceEnglishToggle.checked,
+    });
+    // Reload so the new Accept-Language header + navigator spoof take effect here.
+    if (tab.id) chrome.tabs.reload(tab.id);
+  });
+
+  tzToggle.addEventListener('change', async () => {
+    await chrome.runtime.sendMessage({
+      type: 'UPDATE_GLOBAL_SETTING',
+      key: 'spoofTimezoneUS',
+      value: tzToggle.checked,
+    });
+    if (tab.id) chrome.tabs.reload(tab.id);
+  });
+
   // Incognito hint — only shown if the user hasn't already enabled the
   // per-install "Allow in InCognito" toggle and hasn't dismissed the hint.
   // Chrome offers no API to flip the toggle for the user; the best we can do
   // is open chrome://extensions/?id=<id> directly so it's a single click away.
   await setupIncognitoHint();
+
+  // Commit every initial toggle state in a style pass while .loading still
+  // suppresses transitions (same forced-reflow trick as setupSegmented).
+  // Without it, the checked assignments and the .loading removal can land in
+  // one style update — and transitions fire per the after-change style (where
+  // they're re-enabled), so the knobs visibly slide off→on at popup open.
+  void (panel as HTMLElement).offsetHeight;
 
   // State is loaded — reveal the panel
   panel.classList.remove('loading');

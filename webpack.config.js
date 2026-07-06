@@ -9,6 +9,8 @@ module.exports = {
     'youtube-ad-blocker': './src/content/youtube-ad-blocker.ts',
     'yt-sabr-fix': './src/content/yt-sabr-fix.ts',
     'twitch-ad-blocker': './src/content/twitch-ad-blocker.ts',
+    'locale-spoof': './src/content/locale-spoof.ts',
+    'tz-spoof': './src/content/tz-spoof.ts',
     'popup': './src/popup/popup.ts',
   },
   output: {

@@ -7,10 +7,18 @@ import {
   removeTabState,
   getSiteSettings,
   setSiteSettings,
+  getGlobalSettings,
+  setGlobalSettings,
   incrementTabStat,
   setTabEnabled,
 } from './storage';
 import { syncDynamicRules, clearCookiesForHost } from './site-modes';
+import {
+  syncLocaleRules,
+  syncLocaleScript,
+  syncTzScript,
+  syncLocalePrefCookies,
+} from './locale-spoof';
 import { syncYouTubeScript } from './youtube-script';
 import { syncTwitchScript } from './twitch-script';
 
@@ -37,6 +45,14 @@ initEngine().catch((err) => console.error('[Shields] Engine init failed:', err))
 // Sync per-site dynamic DNR rules (aggressive ad blocking + cookie blocking).
 // Runs on every SW startup so the rules survive worker suspension/extension reload.
 syncDynamicRules();
+
+// Sync the global "Force English (US)" Accept-Language rule + navigator/Intl
+// spoof + US-timezone spoof + the Google/YouTube PREF language cookie (which
+// outranks the header).
+syncLocaleRules();
+syncLocaleScript();
+syncTzScript();
+syncLocalePrefCookies();
 
 // Sync the dynamic registration of the YouTube + Twitch ad-blocker content scripts.
 syncYouTubeScript();
@@ -66,10 +82,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       (async () => {
         const settings = hostname ? await getSiteSettings(hostname) : null;
         const tabState = tabId != null ? await getTabState(tabId) : null;
+        const global = await getGlobalSettings();
         sendResponse({
           enabled: settings?.enabled ?? true,
           adBlockMode: settings?.adBlockMode ?? 'standard',
           cookieBlocking: settings?.cookieBlocking ?? 'cross-site',
+          // Global (not per-site) — powers the "Force English (US)" toggles.
+          forceEnglishUS: global.forceEnglishUS,
+          spoofTimezoneUS: global.spoofTimezoneUS,
           // Whether filter authors flagged this site as generichide-exempt. The
           // cosmetic observer uses it to skip generic hiding entirely.
           generichide: hostname
@@ -145,6 +165,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           await clearCookiesForHost(hostname);
         }
 
+        sendResponse({ success: true });
+      })();
+      return true;
+    }
+
+    case 'UPDATE_GLOBAL_SETTING': {
+      const { key, value } = message;
+      const VALID_KEYS = ['forceEnglishUS', 'spoofTimezoneUS'];
+      if (!VALID_KEYS.includes(key)) {
+        sendResponse({ success: false, error: 'Invalid setting key' });
+        return false;
+      }
+      (async () => {
+        await setGlobalSettings({ [key]: value });
+        // Force English is enforced by a dynamic DNR rule + two MAIN-world
+        // scripts + the Google/YouTube PREF cookie. Each sync self-gates on
+        // the settings, so just recompute them all on any change. Awaited so
+        // the popup's tab reload happens after they're in place.
+        await syncLocaleRules();
+        await syncLocaleScript();
+        await syncTzScript();
+        await syncLocalePrefCookies();
         sendResponse({ success: true });
       })();
       return true;
