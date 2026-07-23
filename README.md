@@ -9,6 +9,7 @@ Works on any Chromium browser: Chrome, Edge, Vivaldi, Opera, [Thorium](https://t
 - Ads, trackers and fingerprinting scripts: ~16k DNR rules (EasyList, EasyPrivacy, uBlock, Peter Lowe) plus the WASM engine for cosmetic element hiding.
 - YouTube video ads: strips `adPlacements`/`playerAds`/`adSlots` out of the player API response before the page reads it, and cancels YouTube's SABR ad-slot backoff so playback starts right away instead of hanging on a spinner.
 - Twitch ads: Twitch stitches ads into the HLS video stream, so when an ad shows up the script swaps to an ad-free backup stream for the duration of the break. Based on [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions). Twitch breaks this every so often, so expect the occasional miss.
+- Twitch "stream display ads": the newer format that shrinks the player and puts a banner beside or below it. These never touch the video stream, so the stream-swap above can't see them — they're hidden separately, and the player is pinned back to full size so the stream doesn't sit in a corner with a black gap next to it.
 
 ## Per-site controls
 

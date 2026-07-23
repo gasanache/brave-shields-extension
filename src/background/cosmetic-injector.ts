@@ -1,4 +1,4 @@
-import { getCosmeticResources } from './engine';
+import { getCosmeticResources, initEngine } from './engine';
 import { getSiteSettings } from './storage';
 
 export function setupCosmeticInjector(): void {
@@ -31,6 +31,17 @@ export function setupCosmeticInjector(): void {
     // Check if shields are enabled for this site
     const settings = await getSiteSettings(topHostname);
     if (!settings.enabled) return;
+
+    // The navigation that wakes a suspended service worker commits long before
+    // the 7 MB engine finishes deserializing. Without this await the lookup
+    // below returns null and the page gets no cosmetic filtering at all — for
+    // its whole lifetime, since onCommitted doesn't fire again for SPA routing.
+    // initEngine() memoizes its promise, so this is a no-op once warm.
+    try {
+      await initEngine();
+    } catch {
+      return;
+    }
 
     // Get cosmetic resources for this frame from the WASM engine.
     const resources = getCosmeticResources(url);

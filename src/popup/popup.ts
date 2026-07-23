@@ -162,7 +162,7 @@ async function init(): Promise<void> {
   };
 
   forceEnglishToggle.checked = state?.forceEnglishUS ?? true;
-  tzToggle.checked = state?.spoofTimezoneUS ?? true;
+  tzToggle.checked = state?.spoofTimezoneUS ?? false;
   syncTzRowState();
 
   forceEnglishToggle.addEventListener('change', async () => {

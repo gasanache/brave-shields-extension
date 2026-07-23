@@ -11,6 +11,7 @@ import {
   setGlobalSettings,
   incrementTabStat,
   setTabEnabled,
+  migrateTimezoneDefaultOff,
 } from './storage';
 import { syncDynamicRules, clearCookiesForHost } from './site-modes';
 import {
@@ -51,7 +52,9 @@ syncDynamicRules();
 // outranks the header).
 syncLocaleRules();
 syncLocaleScript();
-syncTzScript();
+// The one-time migration has to land before the TZ script registration reads
+// the setting, or the stale `true` would re-register the spoof for one session.
+migrateTimezoneDefaultOff().then(() => syncTzScript());
 syncLocalePrefCookies();
 
 // Sync the dynamic registration of the YouTube + Twitch ad-blocker content scripts.

@@ -70,6 +70,31 @@ export async function getGlobalSettings(): Promise<GlobalSettings> {
   return { ...DEFAULT_GLOBAL_SETTINGS, ...(result[STORAGE_KEYS.GLOBAL_SETTINGS] ?? {}) };
 }
 
+// spoofTimezoneUS shipped defaulting to true through 1.0.8, and setGlobalSettings
+// writes the whole merged object — so toggling *any* global setting back then
+// persisted `spoofTimezoneUS: true`. Flipping the default alone would never
+// reach those installs, so drop the stored value once and let the new default
+// (off) apply. Guarded by its own key so it runs exactly once and a later
+// deliberate opt-in sticks.
+export async function migrateTimezoneDefaultOff(): Promise<void> {
+  try {
+    const result = await chrome.storage.local.get([
+      STORAGE_KEYS.GLOBAL_SETTINGS,
+      STORAGE_KEYS.TZ_DEFAULT_OFF_MIGRATED,
+    ]);
+    if (result[STORAGE_KEYS.TZ_DEFAULT_OFF_MIGRATED]) return;
+
+    const stored = result[STORAGE_KEYS.GLOBAL_SETTINGS];
+    if (stored && 'spoofTimezoneUS' in stored) {
+      delete stored.spoofTimezoneUS;
+      await chrome.storage.local.set({ [STORAGE_KEYS.GLOBAL_SETTINGS]: stored });
+    }
+    await chrome.storage.local.set({ [STORAGE_KEYS.TZ_DEFAULT_OFF_MIGRATED]: true });
+  } catch (err) {
+    console.error('[Shields] migrateTimezoneDefaultOff failed:', err);
+  }
+}
+
 export async function setGlobalSettings(patch: Partial<GlobalSettings>): Promise<void> {
   const current = await getGlobalSettings();
   await chrome.storage.local.set({

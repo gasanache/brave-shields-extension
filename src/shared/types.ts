@@ -28,7 +28,8 @@ export interface GlobalSettings {
   // (what modern timezone-detection libraries read) and Intl/toLocale* date
   // formatting. The raw Date object (getTimezoneOffset, getHours, toString) is
   // left native to avoid corrupting date math, so those still report the real
-  // zone. Only active while forceEnglishUS is also on.
+  // zone. Only active while forceEnglishUS is also on. Off by default — see
+  // DEFAULT_GLOBAL_SETTINGS.
   spoofTimezoneUS: boolean;
 }
 
